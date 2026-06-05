@@ -69,7 +69,7 @@ export const internships = [
   },
 ];
 
-export const interestsText = 'My interest in machine learning mainly lies in model efficiency like writing different kernels as well as exploring various different types of model architectures. I also happen to have a telegram channel where I talk about various ML stuff in general (https://t.me/qkvthoughts)' ;
+export const interestsText = 'My interest in machine learning mainly lies in model efficiency like writing different kernels as well as exploring various different types of model architectures. I also happen to have a telegram channel where I talk about various ML stuff in general (https://t.me/qkvthoughts). I also enjoy various stuff like badminton (thx to my mum for introducing it to me at such a young age), football, running, cooking, travelling and food in general :)'; ;
 
 export const projects = [
   {

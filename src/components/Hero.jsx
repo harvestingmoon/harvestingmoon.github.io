@@ -17,7 +17,7 @@ export default function Hero() {
       <p>
         I am currently a Research Assistant under the Cooperative Autonomous Systems at{' '}
         <a href="https://cas.aifb.kit.edu/" target="_blank" rel="noopener noreferrer">Karlsruhe Institute of Technology</a>{' '}
-        working with Wan Lei on memory efficiency 4D Gaussian representations for dynamic driving environments.
+        working with Wan Lei on memory efficienct 4D Gaussian representations for dynamic driving environments.
       </p>
       <p>
         I am also
