@@ -26,9 +26,12 @@ export default function Hero() {
         mentored by Darren Tan, focusing on computational biology and inference optimization.
         </p>
         <p>
-        At <strong>TikTok</strong>, I progressed from a Trust & Safety Project Management Intern to a Machine Learning Engineer Intern
+        At TikTok, I progressed from a Trust & Safety Project Management Intern to a Machine Learning Engineer Intern
         in the Search Algorithms and the Tako Team, working on algorithms, AI agents, and knowledge distillation. 
-        Prior to this, I was at <strong>DSTA</strong> and <strong>MOM</strong> focusing on computer vision and LLMs respectively.
+        Prior to this, I was at DSTA and MOM focusing on computer vision and LLMs respectively.
+        </p>
+        I am also involved in open source areas, some notable ones include: pytorch, sglang and llama-cpp (well i try my best to contribute to them) 
+        <p>
         </p>
       <p>
         I am currently an undergraduate student with a Business Analytics degree from{' '}
