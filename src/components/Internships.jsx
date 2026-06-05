@@ -3,7 +3,7 @@ import { internships } from '../data';
 export default function Internships() {
   return (
     <section id="internships">
-      <h2>internships</h2>
+      <h2>previous internships</h2>
       {internships.map((exp) => (
         <div key={exp.id} className="exp-item">
           <p className="meta">
