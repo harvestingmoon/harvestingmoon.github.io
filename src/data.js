@@ -38,7 +38,7 @@ export const research = [
     title: 'SkipFold: Test-Time Dynamic Depth for Scalable Biomolecular Inference',
     venue: 'ICAANN 2026',
     authors: 'Wen Yeong Lee, Darren Tan, Ian McLoughlin, Aik Beng Ng, Zhengkui Wang, Simon See',
-    link: '/papers/skipfold-3.pdf',
+    link: '/papers/skipfold.pdf',
   },
 ];
 
