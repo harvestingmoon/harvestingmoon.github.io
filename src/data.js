@@ -35,10 +35,10 @@ export const mentors = [
 export const research = [
   {
     id: 1,
-    title: '[Coming Soon!]',
-    venue: '[I cannot name it yet, but it will be up here once reviews are out!]',
-    authors: '[Author list.]',
-    link: '',
+    title: 'SkipFold: Test-Time Dynamic Depth for Scalable Biomolecular Inference',
+    venue: 'ICAANN 2026',
+    authors: 'Wen Yeong Lee, Darren Tan, Ian McLoughlin, Aik Beng Ng, Zhengkui Wang, Simon See',
+    link: '/papers/skipfold-3.pdf',
   },
 ];
 
