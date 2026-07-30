@@ -4,7 +4,7 @@ export default function Hero() {
   return (
     <header style={{ marginBottom: 36 }}>
       <img
-        src="/assets/profile.png"
+        src="/profile.png"
         alt="Lee Wen Yeong"
         className="profile-img"
       />
