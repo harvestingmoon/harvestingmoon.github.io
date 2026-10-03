@@ -35,6 +35,13 @@ export const mentors = [
 export const research = [
   {
     id: 1,
+    title: 'The FFT Was Optional: Replacing Evo 2\'s Convolutions with Linear-Time Recurrence',
+    venue: 'ACML 2026',
+    authors: 'Wen Yeong Lee (sole author)',
+    link: '/papers/fft.pdf',
+  },
+  {
+    id: 2,
     title: 'SkipFold: Test-Time Dynamic Depth for Scalable Biomolecular Inference',
     venue: 'ICAANN 2026',
     authors: 'Wen Yeong Lee, Darren Tan, Ian McLoughlin, Aik Beng Ng, Zhengkui Wang, Simon See',

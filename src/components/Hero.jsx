@@ -15,6 +15,13 @@ export default function Hero() {
         Undergraduate student at NUS
       </p>
       <p>
+        <strong>
+          I am an incoming Applied Machine Learning Engineer at{' '}
+          <a href="https://fireworks.ai" target="_blank" rel="noopener noreferrer">Fireworks AI</a>.
+        </strong>{' '}
+        I will be working on fast, production-grade model serving and inference.
+      </p>
+      <p>
         I am currently a Research Assistant under the Cooperative Autonomous Systems at{' '}
         <a href="https://cas.aifb.kit.edu/" target="_blank" rel="noopener noreferrer">Karlsruhe Institute of Technology</a>{' '}
         working with Wan Lei on memory efficient 4D Gaussian representations for dynamic driving environments.
