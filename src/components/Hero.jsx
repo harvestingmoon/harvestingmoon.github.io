@@ -17,35 +17,25 @@ export default function Hero() {
       <p>
         <strong>
           I am an incoming Applied Machine Learning Engineer at{' '}
-          <a href="https://fireworks.ai" target="_blank" rel="noopener noreferrer">Fireworks AI</a>.
+          <a href="https://fireworks.ai" target="_blank" rel="noopener noreferrer">Fireworks AI</a>,
         </strong>{' '}
-        I will be working on fast, production-grade model serving and inference.
+        where I will be working on fast, production-grade model serving and inference. I am finishing a Business
+        Analytics degree at <strong>National University of Singapore</strong> (School of Computing), which is
+        completely unrelated to what I do now, and I enjoy it a lot nonetheless.
       </p>
       <p>
-        I am currently a Research Assistant under the Cooperative Autonomous Systems at{' '}
-        <a href="https://cas.aifb.kit.edu/" target="_blank" rel="noopener noreferrer">Karlsruhe Institute of Technology</a>{' '}
-        working with Wan Lei on memory efficient 4D Gaussian representations for dynamic driving environments.
-      </p>
-      <p>
-        I am also
-        a Student Ambassador at{' '}
-        <a href="https://github.com/NVIDIA-AI-Technology-Center" target="_blank" rel="noopener noreferrer">NVIDIA AI Technology Center</a>{' '}
+        I am currently a Research Assistant under the Cooperative Autonomous Systems group at{' '}
+        <a href="https://cas.aifb.kit.edu/" target="_blank" rel="noopener noreferrer">Karlsruhe Institute of Technology</a>,
+        working with Wan Lei on memory efficient 4D Gaussian representations for dynamic driving environments. I am
+        also a Student Ambassador at the{' '}
+        <a href="https://github.com/NVIDIA-AI-Technology-Center" target="_blank" rel="noopener noreferrer">NVIDIA AI Technology Center</a>,
         mentored by Darren Tan, focusing on computational biology and inference optimization.
-        </p>
-        <p>
-        At TikTok, I progressed from a Trust & Safety Project Management Intern to a Machine Learning Engineer Intern
-        in the Search Algorithms and the Tako Team, working on algorithms, AI agents, and knowledge distillation. 
-        Prior to this, I was at DSTA and MOM focusing on computer vision and LLMs respectively.
-        </p>
-        I am also involved in open source areas, some notable ones include: pytorch, sglang and llama-cpp (well i try my best to contribute to them) 
-        <p>
-        </p>
+      </p>
       <p>
-        I am currently an undergraduate student with a Business Analytics degree from{' '}
-        <strong>National University of Singapore</strong> (School of Computing). 
-        <p>
-        (yes my degree is completely unrelated to what i do, but i enjoy it a lot nonetheless)
-        </p>
+        At TikTok I progressed from a Trust & Safety Project Management Intern to a Machine Learning Engineer Intern in
+        the Search Algorithms and Tako teams, working on ranking algorithms, AI agents and knowledge distillation.
+        Before that I worked on computer vision at DSTA and LLMs at the Ministry of Manpower. I also contribute to open
+        source, mostly PyTorch, SGLang and llama.cpp (I try my best).
       </p>
       <p style={{ marginTop: 16 }}>
         {contactLinks.map((link, i) => (
