@@ -36,7 +36,7 @@ export const research = [
   {
     id: 1,
     title: 'The FFT Was Optional: Replacing Evo 2\'s Convolutions with Linear-Time Recurrence',
-    venue: 'ACML 2026',
+    venue: 'Accepted, ACML 2026 (not in proceedings)',
     authors: 'Wen Yeong Lee (sole author)',
     link: '/papers/fft.pdf',
   },
