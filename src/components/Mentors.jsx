@@ -8,7 +8,7 @@ export default function Mentors() {
         <div key={m.id} className="mentor-item">
           <p style={{ marginBottom: 2 }}>
             <span className="name">{m.name}</span>{' '}
-            <span style={{ color: '#666', fontSize: 13 }}>({m.org})</span>
+            <span style={{ color: 'var(--muted)', fontSize: 13 }}>({m.org})</span>
           </p>
           <p style={{ fontSize: 14 }}>{m.note}</p>
         </div>

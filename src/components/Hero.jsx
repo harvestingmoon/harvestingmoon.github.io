@@ -11,7 +11,7 @@ export default function Hero() {
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
         Lee Wen Yeong
       </h1>
-      <p style={{ color: '#666', fontSize: 14, marginBottom: 14 }}>
+      <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 14 }}>
         Undergraduate student at NUS
       </p>
       <p>

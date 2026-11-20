@@ -1,24 +1,11 @@
 ---
-title: Hello, world
+title: the state of speculative decoding (nov 2026)
 date: 2026-11-20
-summary: First post — replace this file with your own. Filename is the URL slug.
+summary: me covering on spec decoding
 ---
 
-This is the example post. To publish, drop a `.md` file into `posts/` at the repo
-root and run `./build.sh`. The filename becomes the URL: `posts/my-post.md` →
-`#/blog/my-post`.
 
-## Front matter
-
-Three optional keys between the `---` fences:
-
-```md
----
-title: The title shown everywhere
-date: 2026-11-20
-summary: One line shown on the writing index.
----
-```
+## Speculative Decoding
 
 ## What markdown gets you
 

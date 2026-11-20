@@ -22,7 +22,7 @@ export default function Blog({ path }) {
           <a href="#/blog">← writing</a>
         </p>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: '18px 0 4px' }}>{post.title}</h1>
-        <p style={{ fontSize: 13, color: '#666', marginBottom: 24 }}>{post.date}</p>
+        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>{post.date}</p>
         <div className="post-body" dangerouslySetInnerHTML={{ __html: renderBody(post) }} />
       </article>
     );
@@ -42,7 +42,7 @@ export default function Blog({ path }) {
               {p.title}
             </a>
           </p>
-          <p style={{ fontSize: 13, color: '#666', marginBottom: 2 }}>{p.date}</p>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 2 }}>{p.date}</p>
           {p.summary && <p style={{ fontSize: 14, color: '#444' }}>{p.summary}</p>}
         </div>
       ))}

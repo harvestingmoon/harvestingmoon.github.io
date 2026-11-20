@@ -9,11 +9,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/png" href="/profile.png" />
-    <script type="module" crossorigin src="/assets/index-BzAHOU1g.js"></script>
+    <script>
+      // set the theme before first paint so there is no white flash
+      try {
+        var saved = localStorage.getItem('theme');
+        document.documentElement.dataset.theme =
+          saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      } catch (e) {}
+    </script>
+    <script type="module" crossorigin src="/assets/index-D6OwnrHm.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/vendor-BJsqeLoe.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-Cuxh8VdV.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-UMICCfV7.css">
   </head>
-  <body class="bg-white text-gray-900 antialiased">
+  <body class="antialiased">
     <div id="root"></div>
   </body>
 </html>
