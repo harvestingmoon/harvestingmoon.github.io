@@ -127,6 +127,32 @@ p { margin-bottom: 12px; }
 .post-body th, .post-body td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; }
 .post-body hr { border: none; border-top: 1px solid var(--line); margin: 24px 0; }
 
+/* reactions at the end of a post (src/components/PostReactions.jsx) */
+.post-reactions {
+  display: flex;
+  gap: 8px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  line-height: 1;
+  padding: 7px 12px;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.reaction:hover { border-color: var(--muted); color: var(--fg); }
+.reaction[aria-pressed='true'] { border-color: var(--accent); color: var(--fg); background: var(--soft); }
+.reaction span { font-size: 12px; }
+
 /* section rail beside a post (src/components/PostToc.jsx) */
 .post-toc {
   position: fixed;
@@ -156,11 +182,21 @@ p { margin-bottom: 12px; }
   .post-toc { display: none; }
 }
 
-/* theme toggle (src/components/ThemeToggle.jsx) */
-.theme-toggle {
+/* always-visible controls (src/components/TopBar.jsx) */
+.top-bar {
   position: fixed;
   top: 14px;
   right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 20;
+}
+.top-bar a { font-size: 13px; color: var(--muted); }
+.top-bar a:hover { color: var(--fg); }
+
+/* theme toggle (src/components/ThemeToggle.jsx) */
+.theme-toggle {
   width: 32px;
   height: 32px;
   font-size: 14px;

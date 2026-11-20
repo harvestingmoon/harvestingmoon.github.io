@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { posts, renderBody } from '../blog';
 import PostToc from './PostToc';
+import PostReactions from './PostReactions';
 
 export default function Blog({ path }) {
   const slug = path.replace(/^#\/blog\/?/, '');
@@ -49,6 +50,7 @@ export default function Blog({ path }) {
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: '18px 0 4px' }}>{post.title}</h1>
         <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>{post.date}</p>
         <div className="post-body" ref={bodyRef} dangerouslySetInnerHTML={{ __html: renderBody(post) }} />
+        <PostReactions slug={post.slug} />
         <PostToc bodyRef={bodyRef} slug={post.slug} />
       </article>
     );

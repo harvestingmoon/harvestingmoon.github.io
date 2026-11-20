@@ -19,6 +19,5 @@ rm -rf assets
 cp -R dist/assets assets                        # built JS/CSS into the repo root
 cp dist/index.html index.html                   # built HTML into the repo root
 cp dist/profile.png profile.png
-[ -f "dist/Resume New.pdf" ] && cp "dist/Resume New.pdf" "Resume New.pdf"
 
-echo "rebuilt: index.html, assets/ (papers/ and src/ are served as-is)"
+echo "rebuilt: index.html, assets/ (papers/, posts/ and src/ are served as-is)"

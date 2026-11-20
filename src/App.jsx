@@ -6,7 +6,7 @@ import Research from './components/Research';
 import Internships from './components/Internships';
 import Projects from './components/Projects';
 import Blog from './components/Blog';
-import ThemeToggle from './components/ThemeToggle';
+import TopBar from './components/TopBar';
 
 export default function App() {
   const [hash, setHash] = useState(window.location.hash);
@@ -21,14 +21,14 @@ export default function App() {
   if (hash.startsWith('#/blog'))
     return (
       <>
-        <ThemeToggle />
+        <TopBar />
         <Blog path={hash} />
       </>
     );
 
   return (
     <>
-      <ThemeToggle />
+      <TopBar />
       <Hero />
       <Interests />
       <Mentors />
