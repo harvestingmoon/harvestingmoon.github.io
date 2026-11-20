@@ -38,7 +38,7 @@ export default function Hero() {
         source, mostly PyTorch, SGLang and llama.cpp (I try my best).
       </p>
       <p>
-        I also write shorter notes on ML and inference systems on{' '}
+        I also write about ML in general on{' '}
         <a href="https://t.me/qkvthoughts" target="_blank" rel="noopener noreferrer">Telegram</a>.
       </p>
       <p style={{ marginTop: 16 }}>
