@@ -15,18 +15,24 @@ export const mentors = [
   },
   {
     id: 2,
+    name: 'Darren Tan',
+    org: 'NVIDIA AI Technology Center',
+    note: 'For giving me the opportunity to write my first research paper, introducing me to the world of research, and letting me try out the NeMo stack.',
+  },
+  {
+    id: 3,
     name: 'Zilu Wang',
     org: 'TikTok',
     note: 'For completely believing in me, encouraging me to make full use of AI agents and also allowing me to produce stuff that has impacted billions of people worldwide. Allowing me to participate in different projects to gain maximum exposure and experience. Also an extremely approachable mentor :)',
   },
-{
-    id: 3,
+  {
+    id: 4,
     name: 'Rachel Deng',
     org: 'TikTok',
     note: 'Even though I was only a project management intern, I was given the task to explore and play around with different SOTA models, very supportive of my interests and encouraged me to go different teams too',
   },
   {
-    id: 4,
+    id: 5,
     name: 'Haniffa',
     org: 'Ministry Of Manpower',
     note: 'Giving me the opportunity to join the AIBots team at MOM, allowing me to explore different ML techniques to solve issues within the agency',

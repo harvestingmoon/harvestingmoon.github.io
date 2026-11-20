@@ -23,10 +23,7 @@ export default function Hero() {
       <p>
         I am currently a Research Assistant under the Cooperative Autonomous Systems group at{' '}
         <a href="https://cas.aifb.kit.edu/" target="_blank" rel="noopener noreferrer">Karlsruhe Institute of Technology</a>,
-        working with Wan Lei on memory efficient 4D Gaussian representations for dynamic driving environments. I am
-        also a Student Ambassador at the{' '}
-        <a href="https://github.com/NVIDIA-AI-Technology-Center" target="_blank" rel="noopener noreferrer">NVIDIA AI Technology Center</a>,
-        mentored by Darren Tan, focusing on computational biology and inference optimization.
+        working with Wan Lei on memory efficient 4D Gaussian representations for dynamic driving environments.
       </p>
       <p>
         At TikTok I progressed from a Trust & Safety Project Management Intern to a Machine Learning Engineer Intern in
