@@ -40,7 +40,7 @@ export default function Hero() {
       <p style={{ marginTop: 16 }}>
         {contactLinks.map((link, i) => (
           <span key={link.label}>
-            <a href={link.href} target={link.href.startsWith('mailto') ? undefined : '_blank'} rel="noopener noreferrer">
+            <a href={link.href} target={link.href.startsWith('mailto') || link.href.startsWith('#') ? undefined : '_blank'} rel="noopener noreferrer">
               {link.label}
             </a>
             {i < contactLinks.length - 1 && <span className="sep">/</span>}

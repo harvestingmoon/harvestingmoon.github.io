@@ -1,5 +1,6 @@
 export const contactLinks = [
   { label: 'email', href: 'mailto:wenyeong21@gmail.com' },
+  { label: 'writing', href: '#/blog' },
   { label: 'cv', href: '/Resume New.pdf' },
   { label: 'linkedin', href: 'https://www.linkedin.com/in/wen-yeong-lee-979a01256/' },
   { label: 'github', href: 'https://github.com/wenyeong21' },

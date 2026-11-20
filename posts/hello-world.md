@@ -1,0 +1,36 @@
+---
+title: Hello, world
+date: 2026-11-20
+summary: First post — replace this file with your own. Filename is the URL slug.
+---
+
+This is the example post. To publish, drop a `.md` file into `posts/` at the repo
+root and run `./build.sh`. The filename becomes the URL: `posts/my-post.md` →
+`#/blog/my-post`.
+
+## Front matter
+
+Three optional keys between the `---` fences:
+
+```md
+---
+title: The title shown everywhere
+date: 2026-11-20
+summary: One line shown on the writing index.
+---
+```
+
+## What markdown gets you
+
+Standard markdown: **bold**, *italic*, `inline code`, [links](https://example.com),
+lists, blockquotes, tables and images.
+
+> Blockquotes look like this.
+
+```python
+def fft_was_optional(x):
+    return recurrence(x)  # 99K -> 175K tokens on one H100
+```
+
+- bullet one
+- bullet two
