@@ -191,6 +191,12 @@ While `GPU 0` is busy verifying a block of $B$ candidate tokens, `GPU 1` does no
 
 The moment `GPU 0` finishes verification and reveals the exact accepted prefix, `GPU 1` already has the matching next draft block ready for immediate handover while simultaneously kicking off pre-drafting for the subsequent round.
 
+
+With that, I think thats all the spec decoding i can come up with so far, hope you enjoyed this blog and ill probably update it occasionally. (If i have the time of course)
+
+Here's a meme 
+![alt text](/posts/post_one/meme.jpg)
+
 ## References
 
 - **Blockwise Parallel Decoding** — Stern, Shazeer, Uszkoreit, Kaiser (Google, 2018), [arXiv:1811.03115](https://arxiv.org/abs/1811.03115)

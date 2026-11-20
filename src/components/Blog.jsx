@@ -1,8 +1,33 @@
+import { useEffect, useRef } from 'react';
 import { posts, renderBody } from '../blog';
+import PostToc from './PostToc';
 
 export default function Blog({ path }) {
   const slug = path.replace(/^#\/blog\/?/, '');
   const post = slug ? posts.find((p) => p.slug === slug) : null;
+  const bodyRef = useRef(null);
+
+  // math lives in the post markdown as $inline$ / $$display$$; render it after the HTML lands.
+  // katex is ~190KB, loaded only when someone opens a post.
+  useEffect(() => {
+    if (!bodyRef.current) return;
+    let cancelled = false;
+    import('katex/contrib/auto-render').then(({ default: renderMathInElement }) => {
+      if (cancelled || !bodyRef.current) return;
+      renderMathInElement(bodyRef.current, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\(', right: '\\)', display: false },
+          { left: '\\[', right: '\\]', display: true },
+        ],
+        throwOnError: false,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [post]);
 
   if (slug && !post) {
     return (
@@ -23,7 +48,8 @@ export default function Blog({ path }) {
         </p>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: '18px 0 4px' }}>{post.title}</h1>
         <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>{post.date}</p>
-        <div className="post-body" dangerouslySetInnerHTML={{ __html: renderBody(post) }} />
+        <div className="post-body" ref={bodyRef} dangerouslySetInnerHTML={{ __html: renderBody(post) }} />
+        <PostToc bodyRef={bodyRef} slug={post.slug} />
       </article>
     );
   }
