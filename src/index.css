@@ -130,12 +130,12 @@ p { margin-bottom: 12px; }
 /* section rail beside a post (src/components/PostToc.jsx) */
 .post-toc {
   position: fixed;
-  right: 24px;
+  left: 24px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 10px;
   z-index: 10;
 }
