@@ -186,10 +186,11 @@ p { margin-bottom: 12px; }
 .top-bar {
   position: fixed;
   top: 14px;
+  left: 14px;
   right: 14px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: space-between;
   z-index: 20;
 }
 .top-bar a { font-size: 13px; color: var(--muted); }

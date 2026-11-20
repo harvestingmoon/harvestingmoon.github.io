@@ -44,10 +44,7 @@ export default function Blog({ path }) {
   if (post) {
     return (
       <article style={{ marginTop: 32 }}>
-        <p style={{ fontSize: 13 }}>
-          <a href="#/blog">← writing</a>
-        </p>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: '18px 0 4px' }}>{post.title}</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>{post.title}</h1>
         <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>{post.date}</p>
         <div className="post-body" ref={bodyRef} dangerouslySetInnerHTML={{ __html: renderBody(post) }} />
         <PostReactions slug={post.slug} />
@@ -58,9 +55,6 @@ export default function Blog({ path }) {
 
   return (
     <section style={{ marginTop: 32 }}>
-      <p style={{ fontSize: 13, marginBottom: 24 }}>
-        <a href="#/">← home</a>
-      </p>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 24 }}>writing</h1>
       {posts.length === 0 && <p>Nothing here yet.</p>}
       {posts.map((p) => (
@@ -71,7 +65,7 @@ export default function Blog({ path }) {
             </a>
           </p>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 2 }}>{p.date}</p>
-          {p.summary && <p style={{ fontSize: 14, color: '#444' }}>{p.summary}</p>}
+          {p.summary && <p style={{ fontSize: 14, color: 'var(--muted)' }}>{p.summary}</p>}
         </div>
       ))}
     </section>

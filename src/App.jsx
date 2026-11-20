@@ -21,14 +21,14 @@ export default function App() {
   if (hash.startsWith('#/blog'))
     return (
       <>
-        <TopBar />
+        <TopBar path={hash} />
         <Blog path={hash} />
       </>
     );
 
   return (
     <>
-      <TopBar />
+      <TopBar path={hash} />
       <Hero />
       <Interests />
       <Mentors />
