@@ -37,6 +37,10 @@ export default function Hero() {
         Before that I worked on computer vision at DSTA and LLMs at the Ministry of Manpower. I also contribute to open
         source, mostly PyTorch, SGLang and llama.cpp (I try my best).
       </p>
+      <p>
+        I also write shorter notes on ML and inference systems on{' '}
+        <a href="https://t.me/qkvthoughts" target="_blank" rel="noopener noreferrer">Telegram</a>.
+      </p>
       <p style={{ marginTop: 16 }}>
         {contactLinks.map((link, i) => (
           <span key={link.label}>
