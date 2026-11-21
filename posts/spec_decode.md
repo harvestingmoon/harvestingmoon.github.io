@@ -78,17 +78,28 @@ It proved you didn't need a standalone drafter, though because each head guessed
 
 ## EAGLE 1 2 and 3 (2024 to 2025)
 
-Rather than guessing raw tokens from scratch, EAGLE runs a tiny autoregressive layer directly on the target model's internal hidden features. 
+Rather than guessing raw tokens from scratch, EAGLE runs a tiny autoregressive layer directly on the target model's internal hidden features. The intuition here is surprisingly practical: discrete token IDs jump unpredictably from word to word, whereas continuous hidden states right before the language modeling head evolve much more smoothly, making them far easier for a single lightweight layer to extrapolate.Later versions refined the plumbing even further: EAGLE 2 added confidence based dynamic draft trees so u spend more guesses on predictable stretches of text, while EAGLE 3 fused low, mid, and high level target features and trained directly on token prediction rather than feature regression, pushing real world speedups past 3x to 6x across vLLM and SGLang.
 
-EAGLE 2 introduces a speculative tree with dynamic branches for better predictions
+![alt text](/posts/post_one/e1.png)
+
+By pairing the target model's feature vector with the embedding of the token that actually got sampled at that step, EAGLE removes the ambiguity of multiple competing branches and reuses the target's own frozen output head for free. 
+
+Later versions refined the plumbing even further: EAGLE 2 added confidence based dynamic draft trees so u spend more guesses on predictable stretches of text
+
+![alt text](/posts/post_one/eagle2.png)
+
+![alt text](/posts/post_one/eagle3.png)
 
 By EAGLE 3, fusing hidden features from multiple layers and training directly on token prediction pushed real world speedups past 3x to 6x.
-
-
 
 ```
 Note: I actually covered a bit more in depth on Medusa && EAGLE in my telegram channel so you can read more over here: https://t.me/qkvthoughts/1202
 ```
+
+Below is a compilation of the speeds across Vanilla to EAGLE-3
+
+<video src="/posts/post_one/e3.mp4" autoplay loop muted playsinline controls></video>
+
 
 As of Nov 2026, I am also well aware that there is EAGLE 3.1 (partnering vLLM, TorchSpec and EAGLE Team)
 
@@ -138,6 +149,8 @@ Interestingly, DeepSeek notes that keeping this causal chain is very similar in 
 ## DFlash, DSpark, and DFlash 2 (2026)
 
 At the end, even a single layer drafter is still autoregressive. If you want a 12 token draft, that little layer still has to run 12 sequential forward passes while the big model stands around waiting.
+
+![alt text](/posts/post_one/dflash.png)
 
 **DFlash** broke that habit in February 2026 by replacing sequential drafting with a lightweight block diffusion drafter. Instead of stepping token by token, it denoises an entire block of masked tokens in parallel in a single forward pass while injecting target KV features into the draft layers. Drafting latency suddenly stopped scaling linearly with block size.
 
@@ -199,18 +212,18 @@ Here's a meme
 
 ## References
 
-- **Blockwise Parallel Decoding** — Stern, Shazeer, Uszkoreit, Kaiser (Google, 2018), [arXiv:1811.03115](https://arxiv.org/abs/1811.03115)
-- **Fast Inference from Transformers via Speculative Decoding** — Leviathan, Kalman, Matias (Google Research, 2022), [arXiv:2211.17192](https://arxiv.org/abs/2211.17192)
-- **Medusa: Simple LLM Inference Acceleration Framework with Multiple Decoding Heads** — Cai et al. (2024), [arXiv:2401.10774](https://arxiv.org/abs/2401.10774) · [code](https://github.com/FasterDecoding/Medusa)
-- **EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty** — Li, Wei, Zhang, Zhang (2024), [arXiv:2401.15077](https://arxiv.org/abs/2401.15077)
-- **EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees** — Li et al. (2024), [arXiv:2406.16858](https://arxiv.org/abs/2406.16858)
-- **EAGLE-3: Scaling up Inference Acceleration via Training-Time Test** — Li et al. (2025), [arXiv:2503.01840](https://arxiv.org/abs/2503.01840) · [code](https://github.com/SafeAILab/EAGLE)
-- **EAGLE 3.1** — EAGLE / vLLM / TorchSpec teams (2026), [lightseek.org blog](https://lightseek.org/blog/eagle-3-1.html)
-- **Better & Faster Large Language Models via Multi-token Prediction** — Gloeckle et al. (Meta, 2024), [arXiv:2404.19737](https://arxiv.org/abs/2404.19737)
-- **DeepSeek-V3 Technical Report** — DeepSeek-AI (2024), [arXiv:2412.19437](https://arxiv.org/abs/2412.19437)
-- **DFlash: Block Diffusion for Flash Speculative Decoding** — Chen, Liang, Liu (2026), [arXiv:2602.06036](https://arxiv.org/abs/2602.06036) · [code](https://github.com/z-lab/dflash)
-- **DSpark: Confidence-Scheduled Speculative Decoding with Semi-Autoregressive Generation** — Cheng et al. (2026), [arXiv:2607.05147](https://arxiv.org/abs/2607.05147)
-- **DFlash 2: Keep Drafting Parallel** — Inco AI (2026), [inco.ai/blog/dflash2](https://inco.ai/blog/dflash2/)
-- **D3D: Decoupled Diffusion Drafting for Asynchronous Speculative Decoding** — Chen et al. (2026), [arXiv:2611.06425](https://arxiv.org/abs/2611.06425) · [code](https://github.com/fudan-generative-vision/D3D)
-- **vLLM spec decode explainer** (2024), [vllm.ai/blog/2024-10-17-spec-decode](https://vllm.ai/blog/2024-10-17-spec-decode)
+- **Blockwise Parallel Decoding** (Stern, Shazeer, Uszkoreit, Kaiser, Google 2018) ([arXiv:1811.03115](https://arxiv.org/abs/1811.03115))
+- **Fast Inference from Transformers via Speculative Decoding** (Leviathan, Kalman, Matias, Google Research 2022) ([arXiv:2211.17192](https://arxiv.org/abs/2211.17192))
+- **Medusa: Simple LLM Inference Acceleration Framework with Multiple Decoding Heads** (Cai et al. 2024) ([arXiv:2401.10774](https://arxiv.org/abs/2401.10774), [code](https://github.com/FasterDecoding/Medusa))
+- **EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty** (Li, Wei, Zhang, Zhang 2024) ([arXiv:2401.15077](https://arxiv.org/abs/2401.15077))
+- **EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees** (Li et al. 2024) ([arXiv:2406.16858](https://arxiv.org/abs/2406.16858))
+- **EAGLE-3: Scaling up Inference Acceleration via Training-Time Test** (Li et al. 2025) ([arXiv:2503.01840](https://arxiv.org/abs/2503.01840), [code](https://github.com/SafeAILab/EAGLE))
+- **EAGLE 3.1** (EAGLE, vLLM and TorchSpec teams 2026) ([lightseek.org blog](https://lightseek.org/blog/eagle-3-1.html))
+- **Better & Faster Large Language Models via Multi-token Prediction** (Gloeckle et al., Meta 2024) ([arXiv:2404.19737](https://arxiv.org/abs/2404.19737))
+- **DeepSeek-V3 Technical Report** (DeepSeek-AI 2024) ([arXiv:2412.19437](https://arxiv.org/abs/2412.19437))
+- **DFlash: Block Diffusion for Flash Speculative Decoding** (Chen, Liang, Liu 2026) ([arXiv:2602.06036](https://arxiv.org/abs/2602.06036), [code](https://github.com/z-lab/dflash))
+- **DSpark: Confidence-Scheduled Speculative Decoding with Semi-Autoregressive Generation** (Cheng et al. 2026) ([arXiv:2607.05147](https://arxiv.org/abs/2607.05147))
+- **DFlash 2: Keep Drafting Parallel** (Inco AI 2026) ([inco.ai/blog/dflash2](https://inco.ai/blog/dflash2/))
+- **D3D: Decoupled Diffusion Drafting for Asynchronous Speculative Decoding** (Chen et al. 2026) ([arXiv:2611.06425](https://arxiv.org/abs/2611.06425), [code](https://github.com/fudan-generative-vision/D3D))
+- **vLLM spec decode explainer** (vLLM 2024) ([vllm.ai/blog/2024-10-17-spec-decode](https://vllm.ai/blog/2024-10-17-spec-decode))
 
