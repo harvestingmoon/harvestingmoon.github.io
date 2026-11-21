@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="py-10 px-6 border-t border-gray-100">
       <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         <p className="text-xs text-gray-400 font-mono">
-          &copy; {new Date().getFullYear()} ████████
+          &copy; {new Date().getFullYear()} Lee Wen Yeong
         </p>
         <div className="flex items-center gap-5">
           {socialLinks.map((link) => (
