@@ -1,16 +1,17 @@
 import ThemeToggle from './ThemeToggle';
 
-// always-visible controls: back link on the left, dark mode on the right
+// back link on the left inside the blog, dark mode on the right everywhere.
+// The home page uses the contact row's `writing` link instead, so no link here.
 export default function TopBar({ path }) {
   const back = path.startsWith('#/blog/')
     ? { label: '← writing', href: '#/blog' }
     : path.startsWith('#/blog')
       ? { label: '← home', href: '#/' }
-      : { label: 'writing', href: '#/blog' };
+      : null;
 
   return (
     <div className="top-bar">
-      <a href={back.href}>{back.label}</a>
+      {back && <a href={back.href}>{back.label}</a>}
       <ThemeToggle />
     </div>
   );

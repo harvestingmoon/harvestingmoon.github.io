@@ -1,49 +1,83 @@
 import { useEffect, useState } from 'react';
 
-const EMOJI = ['👍', '❤️', '🔥', '🤔'];
+const EMOJI = [
+  { key: 'like', char: '👍' },
+  { key: 'love', char: '❤️' },
+  { key: 'fire', char: '🔥' },
+  { key: 'think', char: '🤔' },
+];
 
-// shortcut: counts live in localStorage so they are per-visitor, not shared.
-// Swap the read/write below for a counter API when shared numbers matter.
+const BASE = 'https://abacus.jasoncameron.dev';
+const NS = 'harvestingmoon.github.io';
+
+// Counts are shared through abacus (free counter API, no signup). `mine` stays in
+// localStorage so one device can't count itself twice. abacus only increments, so a
+// reaction is one-way — no un-reacting. Counters expire after ~6 months of no hits.
 export default function PostReactions({ slug }) {
-  const [state, setState] = useState({});
+  const [counts, setCounts] = useState({});
+  const [mine, setMine] = useState({});
 
   useEffect(() => {
     try {
-      setState(JSON.parse(localStorage.getItem(`react:${slug}`)) || {});
+      setMine(JSON.parse(localStorage.getItem(`react:${slug}`)) || {});
     } catch {
-      setState({});
+      setMine({});
     }
+
+    let live = true;
+    const read = (text) => {
+      try {
+        return JSON.parse(text).value;
+      } catch {
+        return undefined; // abacus answers text/html, and "Key not found" for a fresh counter
+      }
+    };
+    EMOJI.forEach(({ key }) => {
+      fetch(`${BASE}/get/${NS}/react-${slug}-${key}`)
+        .then((r) => r.text())
+        .then((t) => {
+          const v = read(t);
+          if (live && typeof v === 'number') setCounts((c) => ({ ...c, [key]: v }));
+        })
+        .catch(() => {});
+    });
+    return () => {
+      live = false;
+    };
   }, [slug]);
 
-  const toggle = (emoji) => {
-    const cur = state[emoji] || { n: 0, mine: false };
-    const next = {
-      ...state,
-      [emoji]: { n: Math.max(0, cur.n + (cur.mine ? -1 : 1)), mine: !cur.mine },
-    };
-    setState(next);
+  const react = async (key) => {
+    if (mine[key]) return;
+    const next = { ...mine, [key]: true };
+    setMine(next);
     try {
       localStorage.setItem(`react:${slug}`, JSON.stringify(next));
     } catch {}
+    setCounts((c) => ({ ...c, [key]: (c[key] || 0) + 1 }));
+    try {
+      const r = await fetch(`${BASE}/hit/${NS}/react-${slug}-${key}`);
+      const v = JSON.parse(await r.text()).value;
+      if (typeof v === 'number') setCounts((c) => ({ ...c, [key]: v }));
+    } catch {
+      /* keep the optimistic count; it is retried by the next visitor */
+    }
   };
 
   return (
     <div className="post-reactions">
-      {EMOJI.map((emoji) => {
-        const cur = state[emoji] || { n: 0, mine: false };
-        return (
-          <button
-            key={emoji}
-            className="reaction"
-            aria-pressed={cur.mine}
-            aria-label={`React with ${emoji}`}
-            onClick={() => toggle(emoji)}
-          >
-            {emoji}
-            {cur.n > 0 && <span>{cur.n}</span>}
-          </button>
-        );
-      })}
+      {EMOJI.map(({ key, char }) => (
+        <button
+          key={key}
+          className="reaction"
+          aria-pressed={!!mine[key]}
+          aria-label={`React with ${char}`}
+          disabled={!!mine[key]}
+          onClick={() => react(key)}
+        >
+          {char}
+          {(counts[key] || 0) > 0 && <span>{counts[key]}</span>}
+        </button>
+      ))}
     </div>
   );
 }
