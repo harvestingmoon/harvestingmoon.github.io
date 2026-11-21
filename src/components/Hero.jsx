@@ -15,7 +15,7 @@ export default function Hero() {
         Undergraduate student at NUS
       </p>
       <p>
-        <strong>I am an incoming Member of Technical Staff (MTS),</strong>{' '}
+        <strong>I am an incoming Member of Technical Staff (MTS) at ████████,</strong>{' '}
         where I will be working on fast, production-grade model serving and inference. I am finishing a Business
         Analytics degree at <strong>National University of Singapore</strong> (School of Computing), which is
         completely unrelated to what I do now, and I enjoy it a lot nonetheless.
