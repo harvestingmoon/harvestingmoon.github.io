@@ -106,7 +106,10 @@ Note: I actually covered a bit more in depth on Medusa && EAGLE in my telegram c
 
 Below is a compilation of the speeds across Vanilla to EAGLE-3
 
-<video src="/posts/post_one/e3.mp4" autoplay loop muted playsinline controls></video>
+<video autoplay loop muted playsinline controls poster="/posts/post_one/e3.jpg">
+  <source src="/posts/post_one/e3.webm" type="video/webm" />
+  <source src="/posts/post_one/e3.mp4" type="video/mp4" />
+</video>
 
 
 As of Nov 2026, I am also well aware that there is EAGLE 3.1 (partnering vLLM, TorchSpec and EAGLE Team)
