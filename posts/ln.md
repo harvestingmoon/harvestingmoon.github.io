@@ -1,0 +1,332 @@
+---
+title: linear-time networks 
+date: 2026-11-23
+summary: understanding variants of linear networks (and why we could learn something from them)
+---
+
+## linear-time networks
+
+Linear networks are basically networks that aim to achieve linear time complexity, and of course there have been many different architectures that try to pull this off.
+
+To understand why anyone bothers chasing linear complexity when transformers already work so well, u just have to look at what happens when a prompt gets really long.
+
+Standard self attention compares every token against every previous token, which means compute scales quadratically and the KV cache grows exponentially with sequence length.
+
+![kv-cache vs context length](/posts/post_two/kvc.png)
+
+Once you push into hundreds of thousands or millions of tokens for coding agents and long documents, hauling that massive KV cache out of GPU memory for every single generated token turns into a brutal bandwidth bottleneck.
+
+Linear networks solve this by making a very simple trade: instead of keeping a transcript of every token ever seen, they compress the entire history into a fixed size recurrent state.
+
+![alt text](/posts/post_two/linear.png)
+
+Updating that state costs constant memory and constant compute per token during generation, giving you linear complexity across the whole sequence. 
+
+Most modern LLMs nowadays now combine this with attention in a 3:1 (linear attn / quad attn) ratio
+
+Of course there are full linear time networks but researchers probably realised that having a hybrid formula is the best method (as of now)
+
+I will cover these types of different types of linear models, linked below here so you can click to whichever arch you feel most comfotable ++ their simple torch implementations
+
+(btw i am well aware of GRU but i will not include it because it is just a slightly different variant of RNN)
+
+1. RNN (Elman, 1990)
+2. LSTM (Hochreiter and Schmidhuber, 1997)
+3. SSM (S4, Gu et al., Oct 2021)
+4. RWKV (Peng et al., May 2023)
+5. Mamba (1, 2, 3) (Mamba 1, Gu and Dao, Dec 2023; Mamba 2, May 2024; Mamba 3, Mar 2026)
+6. GLA (Yang et al., Dec 2023)
+7. GDN (1 and 2) (GDN 1, Yang et al., Dec 2024; Gated DeltaNet 2, May 2026)
+
+## RNN
+
+Before Transformers took over everything, the classic Recurrent Neural Network popularized by Jeffrey Elman in his 1990 paper [Finding Structure in Time](https://papers.baulab.info/papers/Elman-1990.pdf) was the original blueprint for linear time sequence modeling. At the time he called it Simple Recurrent Networks (SRN)
+
+Instead of staring at the entire history of tokens at once, an SRN reads one token at a time and maintains a single hidden state vector that acts like a rolling summary of everything it has seen so far. (That explains the unfolding portion because it is repeating itself)
+
+![alt text](/posts/post_two/rnn.png)
+
+At every timestep, it simply takes the current input token, combines it with the previous hidden state through two learned weight matrices, and squashes the sum through a nonlinearity like tanh to produce the updated state. 
+
+the image below is the original representation based on the research paper, but it a little hard to understand what is going on without the extra contexts so:
+
+![alt text](/posts/post_two/srn.png)
+
+Here is the pytorch implementation
+
+```python
+import torch
+import torch.nn as nn
+
+class RNN(nn.Module):
+    def __init__(self, d_in: int, d_hidden: int):
+        super().__init__()
+        self.d_hidden = d_hidden
+        self.w_ih = nn.Linear(d_in, d_hidden)
+        self.w_hh = nn.Linear(d_hidden, d_hidden, bias=False)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x: (batch, seq_len, d_in)
+        B, T, _ = x.shape
+        h = torch.zeros(B, self.d_hidden, device=x.device, dtype=x.dtype)
+        outputs = []
+        for t in range(T):
+            h = torch.tanh(self.w_ih(x[:, t]) + self.w_hh(h))
+            outputs.append(h)
+        return torch.stack(outputs, dim=1)
+```
+The problem faced in RNN is that while cramming an entire sequence into a single fixed capacity hidden state gives you constant memory at inference, it creates severe mathematical and hardware bottlenecks during training. 
+
+Because backpropagation through time repeatedly multiplies gradients across every step, small weights cause gradients to vanish and give the network amnesia over long dependencies, while large weights cause gradients to explode into unstable NaNs. 
+
+![alt text](/posts/post_two/gradient.png)
+
+On top of that, standard RNNs only read left to right without future context, and because every step depends sequentially on the previous hidden state, GPUs cannot parallelize across time and are forced to crawl through long sequences one token at a time.
+## LSTM
+
+After RNNs, we then evolved towards [LSTMs](https://deeplearning.cs.cmu.edu/S23/document/readings/LSTM.pdf), short for long short term memory, introduced by Sepp Hochreiter and Jurgen Schmidhuber in 1997 to stop vanilla RNNs from developing amnesia after thirty tokens. 
+
+
+The core problem with a standard RNN is that every single step multiplies the hidden state by the same weight matrix and squashes it through tanh, so early memories either decay exponentially into zero or blow up during backpropagation. 
+
+
+LSTMs fix this by adding a separate memory highway running straight across the top of the cell from $C_{t-1}$ to $C_t$, protected by three learned gates that look at the incoming token $X_t$ alongside the previous hidden state $H_{t-1}$ to regulate what stays and what goes.
+
+![alt text](/posts/post_two/lstm.png)
+
+Walking across the diagram from left to right, the forget gate $F_t$ passes the combined inputs through a sigmoid layer and multiplies elementwise with the old cell memory $C_{t-1}$ to decide what information gets wiped out. 
+
+Next, the input gate $I_t$ (another sigmoid valve) teams up with a tanh layer creating candidate memory $\tilde{C}_t$, multiplying them together before adding the result straight onto that top memory rail to form the updated cell state $C_t$. 
+
+Finally, the output gate $O_t$ filters a tanh squashed version of the new cell state to produce the next hidden state $H_t$ passed onward to the rest of the network. 
+
+Because updates along that upper $C_t$ rail are additive rather than purely multiplicative, gradients can flow backward across hundreds of timesteps without vanishing. 
+
+Below is a general torch implementation on LSTMs
+
+```python
+import torch
+import torch.nn as nn
+
+class LSTM(nn.Module):
+    def __init__(self, d_in: int, d_hidden: int):
+        super().__init__()
+        self.d_hidden = d_hidden
+        self.w_ih = nn.Linear(d_in, 4 * d_hidden)
+        self.w_hh = nn.Linear(d_hidden, 4 * d_hidden, bias=False)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x: (batch, seq_len, d_in)
+        B, T, _ = x.shape
+        h = torch.zeros(B, self.d_hidden, device=x.device, dtype=x.dtype)
+        c = torch.zeros(B, self.d_hidden, device=x.device, dtype=x.dtype)
+        outputs = []
+        for t in range(T):
+            gates = self.w_ih(x[:, t]) + self.w_hh(h)
+            i, f, g, o = gates.chunk(4, dim=-1)
+            i = torch.sigmoid(i)
+            f = torch.sigmoid(f)
+            g = torch.tanh(g)
+            o = torch.sigmoid(o)
+            c = f * c + i * g
+            h = o * torch.tanh(c)
+            outputs.append(h)
+        return torch.stack(outputs, dim=1)
+
+```
+
+Still, you can already spot the problem: all those sigmoid and tanh blocks sit right inside the recurrent loop, meaning LSTMs still force GPUs to march through sequences one token at a time during training.
+
+
+## SSM 
+
+For awhile, we mainly relied on LSTMs as linear time networks. Of course, many variants came out. 
+
+This was the case until Albert Gu, Karan Goel, and Christopher Re introduced [Structured State Spaces (S4)](https://arxiv.org/pdf/2111.00396) in late 2021, borrowing a classic control theory equation from the 1960s and using a simple trade: rip the nonlinearities out of the recurrent loop completely.
+
+Without a tanh or sigmoid blocking every step, the hidden state update becomes a purely linear recurrence governed by fixed transition matrices initialized using a mathematical framework called [HiPPO](https://arxiv.org/pdf/2008.07669) so the state naturally compresses long histories without decaying into noise. 
+
+At its core, SSM is governed by 2 equations
+
+$$h'(t) = A h(t) + B x(t)$$
+$$y(t) = C h(t) + D x(t)$$
+
+The first equation updates the hidden memory state $h(t)$ by mixing the existing memory through matrix $A$ with the incoming signal $x(t)$ weighted by $B$, while the second equation reads out the relevant pieces through $C$ alongside a direct skip connection $D x(t)$. 
+
+Because text arrives as discrete tokens rather than a smooth continuous wave, S4 discretizes $(A, B)$ using a step size $\Delta$ into discrete step matrices $(\overline{A}, \overline{B})$, turning the system into a clean recurrence $h_t = \overline{A} h_{t-1} + \overline{B} x_t$.
+
+This can be visualized from this image (cudos to maarten grootendorst / gemini for this):
+
+![alt text](/posts/post_two/ssm_diag.png)
+
+Walking across the diagram from left to right, the incoming signal $x(t)$ splits onto two tracks. On the main lower track, $x(t)$ gets multiplied by the green input matrix $B$ to encode the new token, and is immediately summed with the previous memory coming out of the yellow feedback loop $A$, updating that central cyan grid labeled State Representation. 
+
+That feedback loop is the beating heart of the state space model: at every stepd, matrix $A$ takes the existing cyan state representation, transforms how old memories decay or mix together, and feeds it right back into the summation node. To produce the actual prediction, the updated state is projected through the blue output matrix $C$, while the upper track multiplies the raw input $x(t)$ directly by the pink matrix $D$ as a resiual skip connection, summing both paths together to emit the final output
+
+That linearity unlocks a handy dual personality: at inference time, you step forward one token at a time using constant memory, whereas during training, you  unroll the recurrence into a single global convolution across the entire sequence in parallel. The catch is that computing that convolution filter naively for a dense HiPPO matrix $A$ would still blow up your GPU compute and memory.
+
+
+Below is the KEY algorithm that I will focus on which enables S4 to run near-linear complexity during TRAINING mode:
+
+![alt text](/posts/post_two/training.png)
+
+Though it looks complicated, I will try my best to break it down as simple as possible for you (with reference to the top image of course).
+
+S4 splits its memory matrix into two easy parts: a simple grid of independent channels ($\Lambda$) plus a tiny shared correction ($PQ^*$). From there, it builds the filter in five steps:
+
+1. **(Line 1):** First, we tell the math how long our sentence is ($L$) so the memory filter stops after $L$ tokens instead of stretching on forever.
+
+2. **(Line 2):** Instead of doing heavy matrix math one step at a time, we flip into frequency space and solve the simple independent channels ($\Lambda$) all at once using a fast shortcut called a Cauchy kernel.
+   
+3. **(Line 3):** Those independent channels cannot talk to each other on their own, so we use a neat algebra shortcut (the Woodbury Identity) to patch the shared correction ($PQ^*$) back in without slowing anything down.
+   
+4. **(Line 4):** We evaluate that smooth frequency formula at $L$ evenly spaced points around a circle so it lines up cleanly with the $L$ tokens in our sentence.
+   
+5. **(Line 5):** Finally, we run an inverse Fast Fourier Transform (iFFT) to flip those frequency points back into a standard filter ($\overline{K}$) that slides across your whole prompt in parallel[cite: 8].
+
+Once u have that filter $\overline{K}$, training runs across all tokens simultaneously on the GPU, while during chat inference you just throw the filter away and step forward one token at a time using constant memory.
+
+I have also provided an image generated by Gemini to better visualize the core algo of S4
+![alt text](/posts/post_two/g_new.png)
+
+Below is a simple torch implementation
+
+```python
+import torch
+import torch.nn as nn
+
+class SSM(nn.Module):
+    def __init__(self, d_model: int, d_state: int = 16):
+        super().__init__()
+        self.d_model = d_model
+        self.d_state = d_state
+        # Diagonal log-space state transition A (kept negative for stability)
+        self.log_A = nn.Parameter(torch.randn(d_model, d_state))
+        self.B = nn.Parameter(torch.randn(d_model, d_state) * 0.02)
+        self.C = nn.Parameter(torch.randn(d_model, d_state) * 0.02)
+        self.D = nn.Parameter(torch.ones(d_model))
+
+    def _get_discrete_params(self):
+        # Discretized diagonal state decay in (0, 1)
+        A_bar = torch.exp(-torch.exp(self.log_A))  # (D, N)
+        return A_bar, self.B, self.C
+
+    def forward_parallel(self, x: torch.Tensor) -> torch.Tensor:
+        # Parallel FFT convolution mode for training
+        # x: (batch, seq_len, d_model)
+        B_sz, T, D = x.shape
+        A_bar, B_mat, C_mat = self._get_discrete_params()
+
+        # Build global convolution kernel K of length T: K[t] = sum_n C * (A^t) * B
+        powers = torch.arange(T, device=x.device).view(1, 1, T)
+        kernel = (C_mat * B_mat).unsqueeze(-1) * (A_bar.unsqueeze(-1) ** powers)
+        kernel = kernel.sum(dim=1)  # (D, T)
+
+        # Convolve along sequence dimension via FFT
+        fft_len = 2 * T
+        x_f = torch.fft.rfft(x.transpose(1, 2), n=fft_len)
+        k_f = torch.fft.rfft(kernel, n=fft_len)
+        y = torch.fft.irfft(x_f * k_f.unsqueeze(0), n=fft_len)[..., :T]
+        return y.transpose(1, 2) + x * self.D
+
+    def step_recurrent(self, x_t: torch.Tensor, state: torch.Tensor):
+        # O(1) recurrent step mode for inference
+        # x_t: (batch, d_model), state: (batch, d_model, d_state)
+        A_bar, B_mat, C_mat = self._get_discrete_params()
+        state = state * A_bar.unsqueeze(0) + x_t.unsqueeze(-1) * B_mat.unsqueeze(0)
+        y_t = (state * C_mat.unsqueeze(0)).sum(dim=-1) + x_t * self.D
+        return y_t, state
+```
+
+Though they are a better alternative, they have not really gained that much traction within the ML community, but have appeared in hybrid archs and slowly evolved into S6 / MAMBA
+
+## Mamba / S6 
+
+The successor of S4 is basically MAMBA, which was introduced as S6 by Albert Gu and Tri Dao in December 2023. S4 mainly used control theory, but the issue is that it treated every token sequence with the exact same static math rule, meaning it could not selectively ignore filler words or lock onto a specific clue from earlier in the prompt.
+
+S6 builds on top of this by using a selection mechanism that turns the core state space parameters ($\Delta$, $B$, and $C$) into functions of the current input token itself. By making the step size $\Delta$ data dependent, the model dynamically controls whether to reset its hidden state and absorb a crucial new token or hold onto its existing memory and breeze right past irrelevant noise. 
+
+![alt text](/posts/post_two/s6.png)
+
+On the left, Algorithm 1 shows standard S4, where the parameters $B$, $C$, and the step size $\Delta$ are fixed learned weights with shapes $(D, N)$ or $(D)$ that stay completely frozen across every token and batch. 
+
+Because those numbers never change from one word to the next, S4 is time invariant, meaning u can unroll the math into a static global convolution during training. 
+
+On the right, Algorithm 2 shows Mamba (S6), where those exact three parameters gain batch and sequence length dimensions $(B, L, N)$ or $(B, L, D)$ because they are now computed dynamically from the incoming token $x$ itself via linear projections $s_B(x)$, $s_C(x)$, and $s_\Delta(x). 
+When Line 5 discretizes $A$ and $B$ using that token dependent $\Delta$, the resulting transition matrices $\overline{A}$ and $\overline{B}$ become four dimensional tensors $(B, L, D, N)$ that adapt at every single timestep.
+
+Of course, making the transition matrices vary at every step breaks the time invariant property that let S4 use fast FFT convolutions, so they engineered a hardware aware parallel scan algorithm that loads those input dependent matrices directly into fast GPU SRAM, runs the associative recurrence in parallel without writing huge intermediate states back to slow HBM, and preserves true linear scaling alongside constant memory generation.
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class SSM(nn.Module):
+    def __init__(self, d_model: int, d_state: int = 16):
+        super().__init__()
+        self.d_model = d_model
+        self.d_state = d_state
+        # Static diagonal decay parameter A (kept negative for stability)
+        self.log_A = nn.Parameter(torch.randn(d_model, d_state))
+        # Input-dependent projections for step size delta, B, and C
+        self.x_proj = nn.Linear(d_model, d_model + 2 * d_state, bias=False)
+        self.D = nn.Parameter(torch.ones(d_model))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x: (batch, seq_len, d_model)
+        B_sz, T, D = x.shape
+        A = -torch.exp(self.log_A)  # (D, N)
+
+        # Project input tokens into dynamic parameters (selection mechanism)
+        delta_bc = self.x_proj(x)
+        delta, B_dyn, C_dyn = torch.split(
+            delta_bc, [D, self.d_state, self.d_state], dim=-1
+        )
+        delta = F.softplus(delta)  # (B_sz, T, D)
+
+        # Discretize A and B dynamically at every timestep
+        # A_bar: (B_sz, T, D, N), B_bar: (B_sz, T, D, N)
+        A_bar = torch.exp(delta.unsqueeze(-1) * A.unsqueeze(0).unsqueeze(0))
+        B_bar = delta.unsqueeze(-1) * B_dyn.unsqueeze(2)
+
+        # Sequential scan rollout (replaced by SRAM parallel scan kernel in CUDA)
+        state = torch.zeros(B_sz, D, self.d_state, device=x.device, dtype=x.dtype)
+        outputs = []
+        for t in range(T):
+            state = A_bar[:, t] * state + B_bar[:, t] * x[:, t].unsqueeze(-1)
+            y_t = (state * C_dyn[:, t].unsqueeze(1)).sum(dim=-1)
+            outputs.append(y_t)
+
+        y = torch.stack(outputs, dim=1)
+        return y + x * self.D
+
+```
+Over time, MAMBA evolved to include Mamba 2 and Mamba 3 with slightly varying differences that fixed S6's biggest hardware bottleneck.
+
+![alt text](/posts/post_two/mamba_diff.png)
+
+I will be using the image above as reference
+
+On the left, the **Mamba-1 Block** splits the input through two **Linear projections**, routing the main path through **Conv** and an activation (`σ`) to generate `A`, `X`, `B`, and `C` before feeding them into the **SSM**. While this gave the model content awareness, updating separate decay rates for every channel forced the GPU to rely on slow, custom parallel scans.
+
+In the middle, the **Mamba-2 Block** simplifies this flow via Structured State Space Duality (`SSD`), locking `A` to a single scalar per head so it can process chunks using fast matrix multiplications on GPU Tensor Cores before passing through normalization (`N`), multiplying (`×`) with the gated skip path (`σ`), and projecting out.
+
+On the right, the **Mamba-3 Block** swaps the standard convolution for a **MIMO projection** (shown in blue) and inserts a **RoPE** module with extra normalizations (`N`) and phase angles (`Θ`) directly onto `B` and `C`. These complex rotations track tricky state logic like parity while the Multi-Input Multi-Output projections pack far higher capacity into each head without increasing inference memory.
+
+#### But what is structured state space duality? 
+
+**Structured State Space Duality (SSD)** simply proves that a selective state space model and masked linear attention are the exact same math viewed from two different angles.
+
+When Mamba-2 simplifies the state matrix $A$ down to a single scalar decay per head, the sequential state update collapses into a masked matrix multiplication $(L \circ (Q K^\top)) V$.
+
+This paper expands more on the idea of it https://arxiv.org/pdf/2510.04944
+
+That dual view lets the model switch between two modes at will: during training, it slices prompts into chunks and computes fast matrix multiplications on GPU Tensor Cores like a Transformer, and during inference, it flips back to stepping one token at a time with constant memory like an RNN.
+
+
+## RWKV
+
+## GLA
+
+## GDN
