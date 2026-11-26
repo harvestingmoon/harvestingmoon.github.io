@@ -327,6 +327,40 @@ That dual view lets the model switch between two modes at will: during training,
 
 ## RWKV
 
-## GLA
+```python
+Honestly, I have no idea much about RWKV because I dont really read much on it but I will try my best to explain. 
+```
 
+At its core, RWKV (Receptance Weighted Key Value) is an architecture that bridges the gap between Transformers and RNNs. Just like Mamba and GLA, it trains in parallel like a Transformer while running inference sequentially with $O(1)$ constant memory per token—avoiding the massive KV cache bottleneck of standard attention.
+
+Instead of a standard attention block, RWKV splits each layer into two distinct mixing steps:
+
+**Time Mixing (The Attention Replacement):** Replaces self-attention by interpolating the current token with the previous token (called **token shift**) and computing four vectors: **R**eceptance (how much past info to let through), **W**eight (a learned channel-wise decay rate) **K**ey, and **V**alue.
+
+Instead of multiplying every token against every other token, it maintains a running exponential moving average of past keys and values weighted by $W$, then gates the result with $\sigma(R)$.
+
+
+**Channel Mixing (The FFN Replacement):** Acts like a standard feed-forward network, again blending the current and previous tokens via token shift before gating the output through Receptance.
+
+Across its versions from **RWKV-4** (scalar vector states) to **RWKV-5/6** (expanding into multi-headed 2D matrix states with dynamic, data-dependent decays like GLA) and **RWKV-7 (Goose)** (introducing generalized delta-rule state updates to overwrite stale memories like Gated DeltaNet),it has steadily evolved from a simple linear RNN into a modern matrix-state sequence model.
+
+Now, what I am saying is also an oversimplification because RWKV can get extremely complicated. 
+
+I mean, just look at the illustration of RWKV-7 from the official page of [RWKV](https://www.rwkv.com/)
+
+![alt text](/posts/post_two/rwkv.png "tall")
+But using the power of breaking things down into simpler blocks, the 2 channels (time mix) and (channel mix)
+are still there
+
+In **Time Mix** (the green and orange box), RWKV-7 first blends the current token $x_t$ with the previous token $x_{t-1}$ (`Lerp`) so every projection immediately knows what just happened. Inside the orange `WKV Heads` block, it then updates its $64 \times 64$ memory matrix ($a_{t-1,j}$) using the Delta Rule fading old information (`*`), erasing outdated associations (`-`), and writing the new key-value pair (`+`) before querying the updated memory with Receptance ($r$) and gating the result ($g$).
+
+In **Channel Mix** (the yellow box), the model acts like a standard feed-forward layer to process those newly retrieved features. It blends the current and previous token one last time (`Lerp`), expands the representation $4\times$ through a squared ReLU ($\text{ReLU}^2$) activation, and compresses it back down to pass on to the next block.
+
+
+It is also special because it is more of a community driven project, but this idea isn't widely adopted mainly because of mature transformer infrastructure in training. 
+
+## GLA
+~ to write when free
 ## GDN
+
+
