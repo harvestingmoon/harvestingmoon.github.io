@@ -356,7 +356,7 @@ Now, what I am saying is also an oversimplification because RWKV can get extreme
 \r
 I mean, just look at the illustration of RWKV-7 from the official page of [RWKV](https://www.rwkv.com/)\r
 \r
-![alt text](/posts/post_two/rwkv.png "tall")\r
+![alt text](/posts/post_two/rwkv.png "small")\r
 But using the power of breaking things down into simpler blocks, the 2 channels (time mix) and (channel mix)\r
 are still there\r
 \r

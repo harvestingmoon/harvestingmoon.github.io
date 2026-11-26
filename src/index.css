@@ -126,6 +126,8 @@ p { margin-bottom: 12px; }
 }
 /* genuinely tall diagrams opt out of the height cap: ![alt](src "tall") */
 .post-body img[title='tall'] { max-height: none; }
+/* and shrunk ones name their width: ![alt](src "small") */
+.post-body img[title='small'] { width: 340px; max-width: 100%; max-height: none; }
 .post-body table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px; }
 .post-body th, .post-body td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; }
 .post-body hr { border: none; border-top: 1px solid var(--line); margin: 24px 0; }
