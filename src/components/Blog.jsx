@@ -30,6 +30,18 @@ export default function Blog({ path }) {
     };
   }, [post]);
 
+  // a link like [RNN](#rnn) inside the post must scroll, not replace the hash route
+  const onBodyClick = (e) => {
+    const a = e.target.closest?.('a[href^="#"]');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (href.startsWith('#/')) return; // in-app route, let it through
+    const target = document.getElementById(href.slice(1));
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   if (slug && !post) {
     return (
       <section style={{ marginTop: 32 }}>
@@ -46,7 +58,12 @@ export default function Blog({ path }) {
       <article style={{ marginTop: 32 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>{post.title}</h1>
         <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>{post.date}</p>
-        <div className="post-body" ref={bodyRef} dangerouslySetInnerHTML={{ __html: renderBody(post) }} />
+        <div
+          className="post-body"
+          ref={bodyRef}
+          onClick={onBodyClick}
+          dangerouslySetInnerHTML={{ __html: renderBody(post) }}
+        />
         <PostReactions slug={post.slug} />
         <PostToc bodyRef={bodyRef} slug={post.slug} />
       </article>

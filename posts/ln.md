@@ -30,13 +30,13 @@ I will cover these types of different types of linear models, linked below here 
 
 (btw i am well aware of GRU but i will not include it because it is just a slightly different variant of RNN)
 
-1. RNN (Elman, 1990)
-2. LSTM (Hochreiter and Schmidhuber, 1997)
-3. SSM (S4, Gu et al., Oct 2021)
-4. RWKV (Peng et al., May 2023)
-5. Mamba (1, 2, 3) (Mamba 1, Gu and Dao, Dec 2023; Mamba 2, May 2024; Mamba 3, Mar 2026)
-6. GLA (Yang et al., Dec 2023)
-7. GDN (1 and 2) (GDN 1, Yang et al., Dec 2024; Gated DeltaNet 2, May 2026)
+1. [RNN](#rnn) (Elman, 1990)
+2. [LSTM](#lstm) (Hochreiter and Schmidhuber, 1997)
+3. [SSM](#ssm) (S4, Gu et al., Oct 2021)
+4. [RWKV](#rwkv) (Peng et al., May 2023)
+5. [Mamba (1, 2, 3)](#mamba-s6) (Mamba 1, Gu and Dao, Dec 2023; Mamba 2, May 2024; Mamba 3, Mar 2026)
+6. [GLA](#gla) (Yang et al., Dec 2023)
+7. [GDN (1 and 2)](#gdn) (GDN 1, Yang et al., Dec 2024; Gated DeltaNet 2, May 2026)
 
 ## RNN
 
