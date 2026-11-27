@@ -491,8 +491,10 @@ If you realise, a good portion of this is inspired from RNNs which is true\r
 \r
 Overtime, GDN was implemented and / or modified slightly across various large production models. Including but not limited to Qwen models and Kimi Linear models.\r
 \r
-![alt text](/posts/post_two/qwen.png "tall")\r
-![alt text](/posts/post_two/kimi_linear.png "tall")\r
+<div class="img-row">\r
+  <img src="/posts/post_two/qwen.png" alt="Qwen3-Next hybrid Gated DeltaNet and gated attention blocks" />\r
+  <img src="/posts/post_two/kimi_linear.png" alt="Kimi Linear hybrid KDA and MLA blocks" />\r
+</div>\r
 \r
 \r
 Here is the simple torch implementation of GDN: \r

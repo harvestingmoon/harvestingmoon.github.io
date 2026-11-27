@@ -107,7 +107,10 @@ p { margin-bottom: 12px; }
 .post-body h1 { font-size: 20px; font-weight: 700; margin: 32px 0 10px; }
 .post-body h2 { font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--fg); margin: 28px 0 10px; padding-bottom: 0; border: none; }
 .post-body h3 { font-size: 15px; font-weight: 600; margin: 22px 0 8px; }
-.post-body ul, .post-body ol { margin: 0 0 14px 20px; }
+/* Tailwind's preflight strips list markers, so put them back */
+.post-body ul { margin: 0 0 14px 20px; list-style: disc; }
+.post-body ol { margin: 0 0 14px 20px; list-style: decimal; }
+.post-body li { padding-left: 2px; }
 .post-body li { margin-bottom: 5px; }
 .post-body code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; background: var(--soft); padding: 1px 4px; border-radius: 3px; }
 .post-body pre { background: var(--pre); border: 1px solid var(--line); border-radius: 4px; padding: 12px 14px; overflow-x: auto; margin-bottom: 16px; }
@@ -128,6 +131,13 @@ p { margin-bottom: 12px; }
 .post-body img[title='tall'] { max-height: none; }
 /* and shrunk ones name their width: ![alt](src "small") */
 .post-body img[title='small'] { width: 340px; max-width: 100%; max-height: none; }
+/* two figures in one row: wrap them in <div class="img-row"> */
+.post-body .img-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 18px; }
+.post-body .img-row img { width: 50%; height: auto; max-height: none; margin: 0; object-fit: contain; }
+@media (max-width: 560px) {
+  .post-body .img-row { flex-direction: column; }
+  .post-body .img-row img { width: 100%; }
+}
 .post-body table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px; }
 .post-body th, .post-body td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; }
 .post-body hr { border: none; border-top: 1px solid var(--line); margin: 24px 0; }
