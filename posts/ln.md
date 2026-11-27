@@ -349,8 +349,8 @@ Now, what I am saying is also an oversimplification because RWKV can get extreme
 I mean, just look at the illustration of RWKV-7 from the official page of [RWKV](https://www.rwkv.com/)
 
 ![alt text](/posts/post_two/rwkv.png "small")
-But using the power of breaking things down into simpler blocks, the 2 channels (time mix) and (channel mix)
-are still there
+
+### But using the power of breaking things down into simpler blocks, the 2 channels (time mix) and (channel mix) are still there
 
 In **Time Mix** (the green and orange box), RWKV-7 first blends the current token $x_t$ with the previous token $x_{t-1}$ (`Lerp`) so every projection immediately knows what just happened. Inside the orange `WKV Heads` block, it then updates its $64 \times 64$ memory matrix ($a_{t-1,j}$) using the Delta Rule fading old information (`*`), erasing outdated associations (`-`), and writing the new key-value pair (`+`) before querying the updated memory with Receptance ($r$) and gating the result ($g$).
 
@@ -360,7 +360,312 @@ In **Channel Mix** (the yellow box), the model acts like a standard feed-forward
 It is also special because it is more of a community driven project, but this idea isn't widely adopted mainly because of mature transformer infrastructure in training. 
 
 ## GLA
-~ to write when free
-## GDN
+
+afaik GLA are basically the ancestors of GDN, in short it stands for gated linear attention and over the years (well specifically 2) it has evolved and been incorporated into many large production models today. 
+
+Standard linear attention avoids the $O(N^2)$ softmax bottleneck by dropping the softmax and rearranging $(Q K^\top) V$ into $Q (K^\top V)$, compressing the entire prompt history into a single fixed-size $d \times d$ matrix state. However, without a way to clear out old tokens, that fixed memory quickly saturates with noise on long sequences.
+
+Introduced in late 2023, [**Gated Linear Attention (GLA)**](https://arxiv.org/pdf/2312.06635) solved this by adding a data-dependent forget gate ($\alpha_t \in (0, 1)$) directly into the recurrence:
+
+$$S_t = \alpha_t \odot S_{t-1} + k_t^\top v_t$$
+
+This lets the model selectively decay stale information while updating the state in hardware-friendly chunks using Tensor Cores (via kernels like `FlashLinearAttention`). 
+
+While GLA bridged the gap between linear attention and SSMs, its purely additive updates still meant new facts simply piled on top of globally decayed old ones.
+
+Now, below is the linear recurrence formula
+
+```python
+import torch
+import torch.nn.functional as F
+
+def gla_recurrent(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, alpha: torch.Tensor) -> torch.Tensor:
+    """
+    Recurrent form of Gated Linear Attention (O(1) memory per step at inference).
+    q, k, v, alpha: (batch, heads, seq_len, d_head)
+    """
+    B, H, L, D = q.shape
+    gates = torch.sigmoid(alpha)
+    
+    # Hidden state matrix S of shape (batch, heads, d_head, d_head)
+    S = torch.zeros(B, H, D, D, device=q.device, dtype=q.dtype)
+    outputs = []
+    
+    for t in range(L):
+        q_t = q[:, :, t]           # (B, H, D)
+        k_t = k[:, :, t]           # (B, H, D)
+        v_t = v[:, :, t]           # (B, H, D)
+        a_t = gates[:, :, t]       # (B, H, D)
+        
+        # Decay previous state row-wise and add new key-value outer product
+        S = a_t.unsqueeze(-1) * S + torch.einsum("bhi,bhj->bhij", k_t, v_t)
+        
+        # Query the updated state
+        o_t = torch.einsum("bhi,bhij->bhj", q_t, S)
+        outputs.append(o_t)
+        
+    return torch.stack(outputs, dim=2)
+```
+
+Surprisingly, it is possible to parallelize this in GPUs, from the original paper they mathematically prove that it is possible to unroll the recurrence into a single parallel matrix equation[cite: 11].
+
+By defining the cumulative product of the forget gates up to step $t$ as $b_t := \prod_{j=1}^t \alpha_j$, every decay factor between step $i$ and step $t$ simplifies into a ratio $\frac{b_t}{b_i}$. 
+
+Stacking those cumulative gates into a matrix $\mathbf{B}$ lets you absorb the decay directly into the Queries and Keys, turning the entire recurrent loop into one causal masked matrix multiplication.
+
+$$\mathbf{O} = \left( \left( (\mathbf{Q} \odot \mathbf{B}) \left( \frac{\mathbf{K}}{\mathbf{B}} \right)^\top \right) \odot \mathbf{M} \right) \mathbf{V}$$
+
+There is just one catch: because $b_t$ is a cumulative product of numbers between $0$ and $1$, it shrinks exponentially on long sequences, causing $\frac{\mathbf{K}}{\mathbf{B}}$ to numerically explode. 
+
+The authors fix this by computing the attention weights in log-space ($\exp(\log \mathbf{B}_{ik} - \log \mathbf{B}_{jk})$) and using a **secondary-level chunking** trick, allowing the model to keep full numerical stability while running fast half-precision matrix multiplications on GPU Tensor Cores.
 
 
+### Ok thats enough math
+
+Now lets also write GLA in the parallel form in pytorch
+
+```python
+import torch
+import torch.nn.functional as F
+
+def gla_parallel(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, alpha: torch.Tensor) -> torch.Tensor:
+    """
+    Parallel form of Gated Linear Attention (log-space stabilized).
+    q, k, v, alpha: (batch, heads, seq_len, d_head), where alpha in (0, 1)
+    """
+    L = q.shape[2]
+    
+    # Cumulative product in log-space: log(B_t) = sum_{j=1}^t log(alpha_j)
+    log_b = torch.cumsum(F.logsigmoid(alpha), dim=2)
+    
+    # Causal mask M (lower triangular)
+    causal_mask = torch.tril(torch.ones(L, L, device=q.device, dtype=torch.bool))
+    
+    # Pairwise log-decay: log(B_i) - log(B_j) for i >= j
+    # Shape: (batch, heads, L, L, d_head)
+    log_decay = log_b.unsqueeze(3) - log_b.unsqueeze(2)
+    log_decay = log_decay.masked_fill(~causal_mask.unsqueeze(-1), float("-inf"))
+    decay = torch.exp(log_decay)
+    
+    # Attention matrix P_{ij} = sum_d Q_{id} * K_{jd} * exp(log B_{id} - log B_{jd})
+    attn = torch.einsum("bhid,bhjd,bhijd->bhij", q, k, decay)
+    
+    # Multiply by V
+    return torch.matmul(attn, v)
+```
+
+Now all of these are pretty important because they set the scene for what we know now as GDN or gated delta networks
+
+## GDN (1 and 2)
+
+Even with forget gates, GLA and Mamba-2 still shared one fundamental flaw: their state updates were purely additive. Every time a new token arrived, they simply decayed the whole state matrix uniformly and piled the new key-value pair right on top, causing older associations to smear together over long contexts.
+
+#### Note:
+```
+A huge portion of understanding GDN came from the original authors blog which i highly reccommend to check it out: https://sustcsonglin.github.io/blog/2024/deltanet-1/ 
+```
+
+[**Gated DeltaNet (GDN)**](https://arxiv.org/pdf/2412.06464) (introduced in December 2024 by Songlin Yang and collaborators) solved this by combining GLA's data-dependent forget gate with the classic **Delta Rule** from neural associative memory. Instead of blindly adding new facts onto the state $S_t$, GDN treats the matrix as an editable key-value store:
+
+1. **Forget:** Decays the previous state $S_{t-1}$ globally using a data-dependent decay gate 
+2. **Retrieve & Erase:** Queries the decayed state with the incoming normalized key $k_t$ to check what value it currently predicts, then this formula 
+   
+    $$k_t^\top (\alpha_t S_{t-1})$$
+   
+   computes the error against the true incoming value $v_t$, and wipes out the outdated association.
+3. **Write:** Inserts the corrected association scaled by a learned write-strength gate $\beta_t \in (0, 1)$:
+
+$$S_t = \alpha_t S_{t-1} (I - \beta_t k_t k_t^\top) + \beta_t v_t k_t^\top$$
+
+Because the term $(I - \beta_t k_t k_t^\top)$ acts as a **Householder-like rank-1 reflection/projection**, GDN cleanly overwrites stale values for a specific key without disturbing unrelated memories.
+
+If you realise, a good portion of this is inspired from RNNs which is true
+
+Overtime, GDN was implemented and / or modified slightly across various large production models. Including but not limited to Qwen models and Kimi Linear models.
+
+![alt text](/posts/post_two/qwen.png "tall")
+![alt text](/posts/post_two/kimi_linear.png "tall")
+
+
+Here is the simple torch implementation of GDN: 
+```python
+import torch
+import torch.nn.functional as F
+
+def gdn_recurrent(
+    q: torch.Tensor, 
+    k: torch.Tensor, 
+    v: torch.Tensor, 
+    alpha: torch.Tensor, 
+    beta: torch.Tensor
+) -> torch.Tensor:
+    """
+    Recurrent form of Gated DeltaNet (GDN).
+    q, k, v: (batch, heads, seq_len, d_head)
+    alpha, beta: (batch, heads, seq_len, 1)
+    """
+    B, H, L, D = q.shape
+    
+    # L2-normalize q and k for stable delta-rule projections
+    q = F.normalize(q, dim=-1)
+    k = F.normalize(k, dim=-1)
+    alpha = torch.sigmoid(alpha)  # Global decay gate in (0, 1)
+    beta = torch.sigmoid(beta)    # Delta write strength in (0, 1)
+    
+    # State matrix S: (batch, heads, d_head, d_head)
+    S = torch.zeros(B, H, D, D, device=q.device, dtype=q.dtype)
+    outputs = []
+    
+    for t in range(L):
+        q_t = q[:, :, t]                    # (B, H, D)
+        k_t = k[:, :, t]                    # (B, H, D)
+        v_t = v[:, :, t]                    # (B, H, D)
+        a_t = alpha[:, :, t].unsqueeze(-1)  # (B, H, 1, 1)
+        b_t = beta[:, :, t]                 # (B, H, 1)
+        
+        # 1. Decay existing memory
+        S = a_t * S
+        
+        # 2. Retrieve current prediction for k_t and compute delta error
+        v_old = torch.einsum("bhi,bhij->bhj", k_t, S)
+        v_delta = b_t * (v_t - v_old)
+        
+        # 3. Overwrite outdated association with rank-1 delta update
+        S = S + torch.einsum("bhi,bhj->bhij", k_t, v_delta)
+        
+        # 4. Read output
+        o_t = torch.einsum("bhi,bhij->bhj", q_t, S)
+        outputs.append(o_t)
+        
+    return torch.stack(outputs, dim=2)
+
+
+
+```
+
+
+[**Gated DeltaNet 2 (GDN-2)**](https://arxiv.org/pdf/2605.22791) (released in Nov 2026) pushed this further by fixing subtle bottlenecks faced in GDN-1 and KDA (Kimi Delta Attention):
+
+Here is the new and improved GDN-2 
+
+![alt text](/posts/post_two/gdn_two.png)
+
+* **Decoupled, Channel-Wise Erase & Write Gates:** Earlier variants forced a single scalar $\beta_t$ to control both erasing old memory and writing new information. GDN-2 splits this into two independent, channel-wise vector gates: an **erase gate** on the key side to select which coordinates to wipe, and a **write gate** on the value side to control which channels get inserted, so the rank-1 state update cleanly asymmetric and channel-selective.
+
+* **Negative-Eigenvalue State Transitions:** GDN-2 allows scaling *only* the erase gate $b_t$ up to $[0, 2]^{d_k}$ while keeping the write gate $w_t \in [0, 1]^{d_v}$. 
+Pushing $b_t > 1$ introduces negative eigenvalues into the state transition matrix, letting the recurrence flip signs to solve tricky state-tracking tasks (like parity) without blowing up value magnitudes.
+
+* **Asymmetric WY Parallelism & Gate-Aware Backward:** By absorbing cumulative channel-wise decays directly into normalized keys and gated erase keys, GDN-2 keeps the exact same triangular WY-representation structure  and fused Triton Tensor Core kernels as KDA. In the backward pass, it adds gate-aware gradient accumulation directly onto the WY auxiliaries so vector-valued gates train cleanly without sacrificing parallel speed.
+
+* **Grouped-Value-Head (GQA-Style) Block Design:** Inside the token-mixer block, query-side tensors (`q`, `k`, log-decay `g`, and erase gate `b`) are repeated across value-head groups, while value-side tensors (`v` and write gate `w`) stay on the native value-head axis—cutting memory overhead while computing log-decays in `fp32` to prevent cumulative precision drift.
+
+
+Now with all of these subtle improvements, the new and improved GDN is actually much faster than most improved variants we have and might actually be the most SOTA (as of Nov 2026)
+
+Now, here is the torch implementation of GDN2
+```python
+import torch
+import torch.nn.functional as F
+
+def gdn2_recurrent(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    g: torch.Tensor,
+    b: torch.Tensor,
+    w: torch.Tensor,
+    allow_negative_eigenvalues: bool = False,
+) -> torch.Tensor:
+    """
+    Simple PyTorch recurrent reference implementation of Gated DeltaNet-2 (GDN-2).
+    
+    State orientation follows the paper: S_t in (B, H, d_k, d_v), o_t = S_t^T q_t
+    q, k: (batch, heads, seq_len, d_k)
+    v:    (batch, heads, seq_len, d_v)
+    g:    (batch, heads, seq_len, d_k) - log-decay tensor (computed in fp32)
+    b:    (batch, heads, seq_len, d_k) - raw logits for key-side erase gate
+    w:    (batch, heads, seq_len, d_v) - raw logits for value-side write gate
+    """
+    B, H, L, D_k = q.shape
+    D_v = v.shape[-1]
+
+    # 1. L2 normalize q and k for stability
+    q = F.normalize(q, dim=-1)
+    k = F.normalize(k, dim=-1)
+
+    # 2. Compute channel-wise decay alpha_t = exp(g_t) in fp32, plus decoupled gates
+    alpha = torch.exp(g.float()).to(q.dtype)
+    erase_gate = torch.sigmoid(b) * (2.0 if allow_negative_eigenvalues else 1.0)
+    write_gate = torch.sigmoid(w)
+
+    # State matrix S: (batch, heads, d_k, d_v)
+    S = torch.zeros(B, H, D_k, D_v, device=q.device, dtype=q.dtype)
+    outputs = []
+
+    for t in range(L):
+        q_t = q[:, :, t]           # (B, H, D_k)
+        k_t = k[:, :, t]           # (B, H, D_k)
+        v_t = v[:, :, t]           # (B, H, D_v)
+        a_t = alpha[:, :, t]       # (B, H, D_k)
+        b_t = erase_gate[:, :, t]  # (B, H, D_k)
+        w_t = write_gate[:, :, t]  # (B, H, D_v)
+
+        # Eq. (8): Decoupled erase key (e_t) and write value (z_t)
+        e_t = b_t * k_t
+        z_t = w_t * v_t
+
+        # Eq. (9): Apply channel-wise decay D_t = Diag(alpha_t)
+        S_bar = a_t.unsqueeze(-1) * S
+
+        # Read existing content along the gated erase direction: r_t = S_bar^T e_t
+        r_t = torch.einsum("bhkv,bhk->bhv", S_bar, e_t)
+
+        # Asymmetric rank-1 delta update: S_t = S_bar + k_t (z_t - r_t)^T
+        S = S_bar + torch.einsum("bhk,bhv->bhkv", k_t, z_t - r_t)
+
+        # Query output: o_t = S_t^T q_t
+        o_t = torch.einsum("bhkv,bhk->bhv", S, q_t)
+        outputs.append(o_t)
+
+    return torch.stack(outputs, dim=2)
+```
+
+And with that, we have come to the end of the linear network list, if you have come to the end. I would like to say congratulations and thank you for taking the time to read this. It took me quite some time because there were lots of papers I had to reference towards but I feel that it was worth it. 
+
+Definitely learnt lots of new things along the way while writing this blog especially because there were some stuff I was unsure of (especially RWKV and its confusing af diagram).
+
+Anyways here are the references I have put in case you are still interested in actually reading those papers
+
+## References
+
+Papers and technical reports
+
+1. **Finding Structure in Time** (Jeffrey L. Elman, 1990) ([papers.baulab.info](https://papers.baulab.info/papers/Elman-1990.pdf))
+2. **Long Short-Term Memory** (Sepp Hochreiter and Jürgen Schmidhuber, 1997) ([CMU reading](https://deeplearning.cs.cmu.edu/S23/document/readings/LSTM.pdf))
+3. **Efficiently Modeling Long Sequences with Structured State Spaces** (Albert Gu, Karan Goel, Christopher Ré, 2021) ([arXiv:2111.00396](https://arxiv.org/abs/2111.00396))
+4. **HiPPO: Recurrent Memory with Optimal Polynomial Projections** (Albert Gu et al., 2020) ([arXiv:2008.07669](https://arxiv.org/abs/2008.07669))
+5. **Mamba: Linear-Time Sequence Modeling with Selective State Spaces** (Albert Gu and Tri Dao, 2023) ([arXiv:2312.00752](https://arxiv.org/abs/2312.00752))
+6. **Transformers are SSMs: Generalized Models and Efficient Algorithms Through Structured State Space Duality** (Tri Dao and Albert Gu, 2024) ([arXiv:2405.21060](https://arxiv.org/abs/2405.21060))
+7. **Mamba-3: Improved Sequence Modeling using State Space Principles** (Aakash Lahoti et al., 2026) ([arXiv:2603.15569](https://arxiv.org/abs/2603.15569))
+8. **On Structured State-Space Duality** (2025) ([arXiv:2510.04944](https://arxiv.org/abs/2510.04944))
+9. **RWKV: Reinventing RNNs for the Transformer Era** (Bo Peng et al., 2023) ([arXiv:2305.13048](https://arxiv.org/abs/2305.13048))
+10. **Eagle and Finch: RWKV with Matrix-Valued States and Dynamic Recurrence** (Bo Peng et al., 2024) ([arXiv:2404.05892](https://arxiv.org/abs/2404.05892))
+11. **RWKV-7 "Goose" with Expressive Dynamic State Evolution** (Bo Peng et al., 2025) ([arXiv:2503.14456](https://arxiv.org/abs/2503.14456))
+12. **Gated Linear Attention Transformers with Hardware-Efficient Training** (Songlin Yang et al., 2023) ([arXiv:2312.06635](https://arxiv.org/abs/2312.06635))
+13. **Parallelizing Linear Transformers with the Delta Rule over Sequence Length** (Songlin Yang et al., 2024) ([arXiv:2406.06484](https://arxiv.org/abs/2406.06484))
+14. **Gated Delta Networks: Improving Mamba2 with Delta Rule** (Songlin Yang et al., 2024) ([arXiv:2412.06464](https://arxiv.org/abs/2412.06464))
+15. **Gated DeltaNet-2: Decoupling Erase and Write in Linear Attention** (Songlin Yang et al., 2026) ([arXiv:2605.22791](https://arxiv.org/abs/2605.22791))
+16. **Kimi Linear: An Expressive, Efficient Attention Architecture** (Kimi Team, Moonshot AI, 2025) ([arXiv:2510.26692](https://arxiv.org/abs/2510.26692))
+
+Blogs and write-ups
+
+17. **DeltaNet explained** (Songlin Yang, 2024) ([sustcsonglin.github.io](https://sustcsonglin.github.io/blog/2024/deltanet-1/))
+18. **A Visual Guide to Mamba and State Space Models** (Maarten Grootendorst) ([newsletter.maartengrootendorst.com](https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-mamba-and-state))
+19. **Qwen3-Next: Towards Ultimate Training & Inference Efficiency** (Qwen Team, Alibaba, 2025) ([qwen.ai](https://qwen.ai/blog?id=qwen3-next))
+20. **RWKV official site and wiki** (RWKV project) ([rwkv.com](https://www.rwkv.com/), [wiki.rwkv.com](https://wiki.rwkv.com/basic/architecture.html))
+
+Names and credits
+
+The people behind the work above: Jeffrey Elman, Sepp Hochreiter and Jürgen Schmidhuber, Albert Gu, Karan Goel, Christopher Ré, Tri Dao, Songlin Yang, Bo Peng and the RWKV community, the Kimi Team at Moonshot AI, and the Qwen Team at Alibaba.
+
+Diagrams: the SSM block diagram is credited to Maarten Grootendorst and Gemini, the S4 filter walkthrough diagram was generated with Gemini, the RWKV-7 illustration comes from the official RWKV site, and the Mamba-1/2/3 block figure along with the Qwen, Kimi Linear and GDN-2 figures are reproduced from their respective papers.
