@@ -36,10 +36,13 @@ export default function Blog({ path }) {
     if (!a) return;
     const href = a.getAttribute('href');
     if (href.startsWith('#/')) return; // in-app route, let it through
-    const target = document.getElementById(href.slice(1));
-    if (!target) return;
+    const anchor = href.slice(1);
+    // a bare #anchor must never reach the router, even if the id has drifted
     e.preventDefault();
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const target =
+      document.getElementById(anchor) ||
+      Array.from(document.querySelectorAll('.post-body [id]')).find((el) => el.id.startsWith(anchor));
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   if (slug && !post) {

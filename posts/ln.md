@@ -36,7 +36,7 @@ I will cover these types of different types of linear models, linked below here 
 4. [RWKV](#rwkv) (Peng et al., May 2023)
 5. [Mamba (1, 2, 3)](#mamba-s6) (Mamba 1, Gu and Dao, Dec 2023; Mamba 2, May 2024; Mamba 3, Mar 2026)
 6. [GLA](#gla) (Yang et al., Dec 2023)
-7. [GDN (1 and 2)](#gdn) (GDN 1, Yang et al., Dec 2024; Gated DeltaNet 2, May 2026)
+7. [GDN (1 and 2)](#gdn-1-and-2) (GDN 1, Yang et al., Dec 2024; Gated DeltaNet 2, May 2026)
 
 ## RNN
 
