@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { posts, renderBody } from '../blog';
 import PostToc from './PostToc';
 import PostReactions from './PostReactions';
@@ -7,6 +7,7 @@ export default function Blog({ path }) {
   const slug = path.replace(/^#\/blog\/?/, '');
   const post = slug ? posts.find((p) => p.slug === slug) : null;
   const bodyRef = useRef(null);
+  const [zoom, setZoom] = useState(null);
 
   // math lives in the post markdown as $inline$ / $$display$$; render it after the HTML lands.
   // katex is ~190KB, loaded only when someone opens a post.
@@ -30,8 +31,27 @@ export default function Blog({ path }) {
     };
   }, [post]);
 
-  // a link like [RNN](#rnn) inside the post must scroll, not replace the hash route
+  // Esc closes the zoomed image and stops the page scrolling behind it
+  useEffect(() => {
+    if (!zoom) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setZoom(null);
+    };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [zoom]);
+
   const onBodyClick = (e) => {
+    const img = e.target.closest?.('.post-body img');
+    if (img) {
+      setZoom({ src: img.currentSrc || img.src, alt: img.alt });
+      return;
+    }
+    // a link like [RNN](#rnn) inside the post must scroll, not replace the hash route
     const a = e.target.closest?.('a[href^="#"]');
     if (!a) return;
     const href = a.getAttribute('href');
@@ -69,6 +89,18 @@ export default function Blog({ path }) {
         />
         <PostReactions slug={post.slug} />
         <PostToc bodyRef={bodyRef} slug={post.slug} />
+        {zoom && (
+          <div
+            className="lightbox"
+            onClick={() => setZoom(null)}
+            onKeyDown={(e) => e.key === 'Escape' && setZoom(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Image preview, click or press Escape to close"
+          >
+            <img src={zoom.src} alt={zoom.alt} />
+          </div>
+        )}
       </article>
     );
   }
